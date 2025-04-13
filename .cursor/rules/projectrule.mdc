@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- Use `LangChain`'s memory management for maintaining conversation context
+- Implement custom tools for domain-specific tasks
+- Leverage `LangChain`'s prompt templates for consistent input formatting
+- Use `LangChain`'s output parsers for structured data extraction
