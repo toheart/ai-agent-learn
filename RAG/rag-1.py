@@ -11,14 +11,13 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langgraph.graph import START, StateGraph
 from typing_extensions import List, TypedDict
-
-#创建模型
+# =====================创建模型=======================
 llm = init_chat_model("gpt-3.5-turbo", model_provider="openai")
-#创建向量模型, 用来将文本转换为向量
+# =====================创建向量模型=======================
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-#创建向量存储
+# =====================创建向量存储=======================
 vector_store = InMemoryVectorStore(embeddings)
-# Load and chunk contents of the blog
+# =====================加载数据=======================
 loader = WebBaseLoader(
     web_paths=("https://lilianweng.github.io/posts/2023-06-23-agent/",),
     bs_kwargs=dict(
@@ -31,40 +30,36 @@ docs = loader.load()
 
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 all_splits = text_splitter.split_documents(docs)
-
-# Index chunks
+# =====================存储向量=======================
 _ = vector_store.add_documents(documents=all_splits)
 
-
-# Define prompt for question-answering
+# =====================定义prompt=======================
 prompt = hub.pull("rlm/rag-prompt")
-
-# Define state for application
+# =====================定义状态=======================
 class State(TypedDict):
     question: str  # 问题
     context: List[Document]  # 上下文
     answer: str  # 回答
 
-
-# Define application steps
+# =====================定义检索函数=======================
 def retrieve(state: State):
     retrieved_docs = vector_store.similarity_search(state["question"])
     return {"context": retrieved_docs}
 
+# =====================定义生成函数=======================
 def generate(state: State):
     docs_content = "\n\n".join(doc.page_content for doc in state["context"])
     messages = prompt.invoke({"question": state["question"], "context": docs_content})
     response = llm.invoke(messages)
     return {"answer": response.content}
 
-# Compile application and test
-# 创建状态图
+# =====================创建状态图=======================
 graph_builder = StateGraph(State).add_sequence([retrieve, generate])
-# 添加边
+# =====================添加边=======================
 graph_builder.add_edge(START, "retrieve")
-# 编译图
+# =====================编译图=======================
 graph = graph_builder.compile()
 
-# 执行图
+# =====================执行=======================
 response = graph.invoke({"question": "What is Task Decomposition?"})
 print(response["answer"])
